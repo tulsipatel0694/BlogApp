@@ -1,0 +1,217 @@
+@page
+@using BlogApp.Domain.Common
+@model IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<header class="masthead">
+    <div class="masthead-inner">
+        <p class="eyebrow">Inkwell</p>
+        <h1>A quiet place to write things down.</h1>
+        <p class="lede">
+            @if (Model.TotalPosts == 0)
+            {
+                <text>No entries yet — the form below writes the first one.</text>
+            }
+            else
+            {
+                <text>@Model.TotalPosts @(Model.TotalPosts == 1 ? "entry" : "entries") published. No sign-up, no accounts, just writing and replies.</text>
+            }
+        </p>
+    </div>
+</header>
+
+@if (!string.IsNullOrEmpty(Model.StatusMessage))
+{
+    <div class="flash" role="status">@Model.StatusMessage</div>
+}
+
+<div class="layout">
+
+    @* ── Section 1: existing entries ──────────────────────────────────── *@
+    <section class="column column-feed" aria-labelledby="feed-heading">
+        <div class="section-head">
+            <h2 id="feed-heading">Latest entries</h2>
+            <span class="count-chip">showing @Model.RecentPosts.Count of @Model.TotalPosts</span>
+        </div>
+
+        @if (Model.RecentPosts.Count == 0)
+        {
+            <div class="empty-state">
+                <p class="empty-mark">✎</p>
+                <p><strong>Nothing has been written yet.</strong></p>
+                <p class="muted">Entries you publish appear here, newest first, with their comment threads.</p>
+            </div>
+        }
+        else
+        {
+            <ol class="entry-list">
+                @foreach (var post in Model.RecentPosts)
+                {
+                    var isOpen = Model.OpenPost?.Id == post.Id;
+                    <li class="entry-card @(isOpen ? "is-open" : null)" id="entry-@post.Id">
+                        <article>
+                            <div class="entry-meta">
+                                <span class="avatar" aria-hidden="true">@post.Author[..1].ToUpperInvariant()</span>
+                                <span class="byline">@post.Author</span>
+                                <span class="dot" aria-hidden="true">·</span>
+                                <time datetime="@post.PublishedOn.ToString("O")">@Format.Friendly(post.PublishedOn)</time>
+                            </div>
+
+                            <h3 class="entry-title">
+                                <a asp-page="/Index"
+                                   asp-route-post="@(isOpen ? null : post.Id)"
+                                   asp-route-all="@(Model.ShowAll ? "true" : null)"
+                                   asp-fragment="entry-@post.Id">@post.Title</a>
+                            </h3>
+
+                            @if (isOpen && Model.OpenPost is not null)
+                            {
+                                <div class="entry-body">
+                                    @foreach (var paragraph in Format.Paragraphs(Model.OpenPost.Body))
+                                    {
+                                        <p>@paragraph</p>
+                                    }
+                                </div>
+
+                                @* ── Section 2b: comments on the open entry ──────── *@
+                                <div class="thread" aria-label="Comments">
+                                    <h4 class="thread-heading">
+                                        @Model.OpenPost.Comments.Count
+                                        @(Model.OpenPost.Comments.Count == 1 ? "comment" : "comments")
+                                    </h4>
+
+                                    @if (Model.OpenPost.Comments.Count == 0)
+                                    {
+                                        <p class="muted small">No comments yet. Yours would be the first.</p>
+                                    }
+                                    else
+                                    {
+                                        <ul class="comment-list">
+                                            @foreach (var comment in Model.OpenPost.Comments)
+                                            {
+                                                <li class="comment">
+                                                    <div class="comment-meta">
+                                                        <span class="byline">@comment.Author</span>
+                                                        <span class="dot" aria-hidden="true">·</span>
+                                                        <time datetime="@comment.PostedOn.ToString("O")">@Format.Friendly(comment.PostedOn)</time>
+                                                    </div>
+                                                    <p class="comment-body">@comment.Body</p>
+                                                </li>
+                                            }
+                                        </ul>
+                                    }
+
+                                    <form method="post"
+                                          asp-page-handler="AddComment"
+                                          asp-route-post="@post.Id"
+                                          class="comment-form">
+                                        <input type="hidden" asp-for="NewComment.PostId" value="@post.Id" />
+
+                                        <div class="field">
+                                            <label asp-for="NewComment.Author">Your name</label>
+                                            <input asp-for="NewComment.Author"
+                                                   maxlength="@FieldLimits.AuthorNameMax"
+                                                   placeholder="e.g. Alex"
+                                                   autocomplete="nickname"
+                                                   required />
+                                            <span asp-validation-for="NewComment.Author" class="field-error"></span>
+                                        </div>
+
+                                        <div class="field">
+                                            <label asp-for="NewComment.Body">Comment</label>
+                                            <textarea asp-for="NewComment.Body"
+                                                      rows="3"
+                                                      minlength="@FieldLimits.CommentBodyMin"
+                                                      maxlength="@FieldLimits.CommentBodyMax"
+                                                      placeholder="Add to the conversation…"
+                                                      required></textarea>
+                                            <span asp-validation-for="NewComment.Body" class="field-error"></span>
+                                        </div>
+
+                                        <button type="submit" class="button">Post comment</button>
+                                    </form>
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="entry-excerpt">@post.Excerpt</p>
+                                <div class="entry-actions">
+                                    <a class="link-action"
+                                       asp-page="/Index"
+                                       asp-route-post="@post.Id"
+                                       asp-route-all="@(Model.ShowAll ? "true" : null)"
+                                       asp-fragment="entry-@post.Id">Read &amp; comment</a>
+                                    <span class="comment-chip">
+                                        @post.CommentCount @(post.CommentCount == 1 ? "comment" : "comments")
+                                    </span>
+                                </div>
+                            }
+                        </article>
+                    </li>
+                }
+            </ol>
+
+            @if (Model.HasMoreToShow)
+            {
+                <a class="button button-ghost show-more" asp-page="/Index" asp-route-all="true">
+                    Show earlier entries
+                </a>
+            }
+            else if (Model.ShowAll)
+            {
+                <a class="button button-ghost show-more" asp-page="/Index">Show the latest five only</a>
+            }
+        }
+    </section>
+
+    @* ── Section 2a: write a new entry ────────────────────────────────── *@
+    <aside class="column column-compose" aria-labelledby="compose-heading">
+        <div class="panel compose" id="compose">
+            <div class="section-head">
+                <h2 id="compose-heading">Write an entry</h2>
+            </div>
+
+            <form method="post" asp-page-handler="CreateEntry">
+                <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+                <div class="field">
+                    <label asp-for="NewPost.Title">Title</label>
+                    <input asp-for="NewPost.Title"
+                           maxlength="@FieldLimits.PostTitleMax"
+                           placeholder="What is this about?"
+                           required />
+                    <span asp-validation-for="NewPost.Title" class="field-error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="NewPost.Author">Your name</label>
+                    <input asp-for="NewPost.Author"
+                           maxlength="@FieldLimits.AuthorNameMax"
+                           placeholder="e.g. Alex"
+                           autocomplete="nickname"
+                           required />
+                    <span asp-validation-for="NewPost.Author" class="field-error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="NewPost.Body">Entry</label>
+                    <textarea asp-for="NewPost.Body"
+                              rows="9"
+                              minlength="@FieldLimits.PostBodyMin"
+                              maxlength="@FieldLimits.PostBodyMax"
+                              placeholder="Blank page, no pressure…"
+                              required></textarea>
+                    <div class="field-foot">
+                        <span asp-validation-for="NewPost.Body" class="field-error"></span>
+                        <span class="hint">@FieldLimits.PostBodyMin–@FieldLimits.PostBodyMax characters</span>
+                    </div>
+                </div>
+
+                <button type="submit" class="button button-primary">Publish entry</button>
+                <p class="hint">The entry date is stamped automatically when you publish.</p>
+            </form>
+        </div>
+    </aside>
+</div>

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] · Inkwell</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <main id="main">
+        @RenderBody()
+    </main>
+    <footer class="site-footer">
+        <span>Inkwell — a small blog built with ASP.NET Core, Razor Pages and Entity Framework Core.</span>
+    </footer>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

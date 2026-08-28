@@ -1,0 +1,15 @@
+@page
+@model ErrorModel
+@{
+    ViewData["Title"] = "Something went wrong";
+}
+
+<section class="panel error-panel">
+    <h1>Something went wrong</h1>
+    <p>The page could not be rendered. Nothing you wrote has been lost unless the browser says otherwise.</p>
+    @if (Model.ShowRequestId)
+    {
+        <p class="muted">Request id: <code>@Model.RequestId</code></p>
+    }
+    <a class="button" asp-page="/Index">Back to the blog</a>
+</section>
